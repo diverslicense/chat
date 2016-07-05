@@ -1,13 +1,15 @@
 package main
 
 import (
-    "fmt"
     "log"
     "database/sql"
 
     _ "github.com/lib/pq"
 )
 
+type DBConn struct {
+    db *sql.DB
+}
 
 type Message struct {
     senderid int
@@ -19,121 +21,146 @@ type Room struct {
     roomname string
 }
 
-// create user
-func createUser(db *sql.DB, username string) {
-    _, err := db.Exec("INSERT INTO chatschema.users (username) VALUES ($1)", username)
+func OpenDBConn() DBConn {
+    db, err := sql.Open("postgres", "dbname=chat user=DB_USER host=127.0.0.1 port=5432 sslmode=disable")
     if err != nil {
-        log.Fatal(err)
+        log.Printf("Unable to connect to database: %s", err)
     }
-    fmt.Println("Created user: ", username)    
+    dbconn := DBConn {db: db}
+
+    return dbconn
+}
+
+// create user
+func (dbconn DBConn) CreateUser(username string) {
+    _, err := dbconn.db.Exec("INSERT INTO chatschema.users (username) VALUES ($1)", username)
+    if err != nil {
+        log.Println(err)
+    }
+    log.Printf("Created user: %s", username)
 }
 
 // create room
-func createRoom(db *sql.DB, roomname string, userid int) {
-    _, err := db.Exec("INSERT INTO chatschema.rooms (roomname) VALUES ($1)", roomname)
+func (dbconn DBConn) CreateRoom(roomname string, userid int) {
+    _, err := dbconn.db.Exec("INSERT INTO chatschema.rooms (roomname) VALUES ($1)", roomname)
     if err != nil {
-        log.Fatal(err)
+        log.Println(err)
     }
-    fmt.Printf("User %d created room: %s", userid, roomname)
+    log.Printf("User %d created room: %s", userid, roomname)
 }
 
 // join room
-func joinRoom(db *sql.DB, roomid int, userid int) {
-    _, err := db.Exec("INSERT INTO chatschema.roommembers (roomid, userid) VALUES ($1, $2)", roomid, userid)
+func (dbconn DBConn) JoinRoom(roomid int, userid int) {
+    _, err := dbconn.db.Exec("INSERT INTO chatschema.roommembers (roomid, userid) VALUES ($1, $2)", roomid, userid)
     if err != nil {
-        log.Fatal(err)
+        log.Println(err)
     }
-    fmt.Printf("User %d has joined room %d", userid, roomid)
+    log.Printf("User %d has joined room %d", userid, roomid)
 }
 
-// send a message from a user to a room 
-func sendMessage(db *sql.DB, messagebody string, roomid int, senderid int) {
-    _, err := db.Exec("INSERT INTO chatschema.messages (messagebody, roomid, senderid) VALUES ($1, $2, $3)", messagebody, roomid, senderid)
+// send a message from a user to a room
+func (dbconn DBConn) SendMessage(messagebody string, roomid int, senderid int) {
+    _, err := dbconn.db.Exec("INSERT INTO chatschema.messages (messagebody, roomid, senderid) VALUES ($1, $2, $3)", messagebody, roomid, senderid)
     if err != nil {
-        log.Fatal(err)
+        log.Println(err)
     }
-    fmt.Printf("User %d has sent message '%s' in room %d", senderid, messagebody, roomid)
+    log.Printf("User %d has sent message '%s' in room %d", senderid, messagebody, roomid)
 }
 
 // return all messages in a room
-func getMessages(db *sql.DB, roomid int) []Message {
-    rows, err := db.Query("SELECT senderid, messagebody FROM chatschema.messages WHERE roomid = $1", roomid)
+func (dbconn DBConn) GetMessages(roomid int) []Message {
+    rows, err := dbconn.db.Query("SELECT senderid, messagebody FROM chatschema.messages WHERE roomid = $1", roomid)
     if err != nil {
-        log.Fatal(err)
+        log.Println(err)
     }
     defer rows.Close()
-    // slice of struct Messages 
-    var messages []Message
+    // slice of struct Messages
+    var Messages []Message
     for rows.Next() {
         var senderid int
         var messagebody string
         if err := rows.Scan(&senderid, &messagebody); err != nil {
-            log.Fatal(err)
+            log.Println(err)
         }
-        messages = append(messages, Message{senderid, messagebody})
+        Messages = append(Messages, Message{senderid, messagebody})
     }
-    fmt.Println("Messages: ", messages)
+    log.Println("Messages: ", Messages)
     if err := rows.Err(); err != nil {
-            log.Fatal(err)
+            log.Println(err)
     }
-    return messages
+    return Messages
 }
 
 // return all users that have joined a room
-func getUsers(db *sql.DB, roomid int) []int {
-    rows, err := db.Query("SELECT userid FROM chatschema.roommembers WHERE roomid = $1", roomid)
+func (dbconn DBConn) GetUsers(roomid int) []int {
+    rows, err := dbconn.db.Query("SELECT userid FROM chatschema.roommembers WHERE roomid = $1", roomid)
     if err != nil {
-        log.Fatal(err)
+        log.Println(err)
     }
     defer rows.Close()
-    var roomUsers []int
+    var RoomUsers []int
     for rows.Next() {
         var userid int
         if err := rows.Scan(&userid); err != nil {
-            log.Fatal(err)
-        }      
-        roomUsers = append(roomUsers, userid)
+            log.Println(err)
+        }
+        RoomUsers = append(RoomUsers, userid)
     }
-    fmt.Printf("Users in room %d: %d", roomid, roomUsers)
-    return roomUsers
+    log.Printf("Users in room %d: %d", roomid, RoomUsers)
+    return RoomUsers
 }
 
 // return all available rooms
-func getRooms(db *sql.DB) []Room {
-    rows, err := db.Query("SELECT roomid, roomname FROM chatschema.rooms")
+func (dbconn DBConn) GetRooms() []Room {
+    rows, err := dbconn.db.Query("SELECT roomid, roomname FROM chatschema.rooms")
     if err != nil {
-        log.Fatal(err)
+        log.Println(err)
     }
     // defers execution of function until surrounding function returns
     defer rows.Close()
-    var rooms []Room
+    var Rooms []Room
     for rows.Next() {
         var roomid int
         var roomname string
         if err := rows.Scan(&roomid, &roomname); err != nil {
-            log.Fatal(err)
+            log.Println(err)
         }
-        rooms = append(rooms, Room{roomid, roomname})
+        Rooms = append(Rooms, Room{roomid, roomname})
     }
-    fmt.Println("rooms: ", rooms)
+    log.Println("rooms: ", Rooms)
     if err := rows.Err(); err != nil {
-            log.Fatal(err)
+            log.Println(err)
     }
-    return rooms
+    return Rooms
 }
 
-func main() {
-    db, err := sql.Open("postgres", "dbname=chat user= host=127.0.0.1 port=5432 sslmode=disable")
+// clear all rows in all tables
+func (dbconn DBConn) clearAllRows() {
+    userRows, err := dbconn.db.Query("DELETE FROM chatschema.users")
     if err != nil {
-        log.Fatal("Unable to connect to database: %s", err)
+        log.Println(err)
     }
+    log.Println("Deleted all users")
+    defer userRows.Close()
 
-    //getRooms(db)
-    //createUser(db, "testfunctionuser")
-    //createRoom(db, "testcreateroom", 1)
-    //joinRoom(db, 1, 1)
-    //getUsers(db, 1)
-    //sendMessage(db, "I like cheese!", 1, 1)
-    //getMessages(db, 1)
-    
+    roomRows, err := dbconn.db.Query("DELETE FROM chatschema.rooms")
+    if err != nil {
+        log.Println(err)
+    }
+    log.Println("Deleted all rooms")
+    defer roomRows.Close()
+
+    roommemberRows, err := dbconn.db.Query("DELETE FROM chatschema.roommembers")
+    if err != nil {
+        log.Println(err)
+    }
+    log.Println("Deleted all room members")
+    defer roommemberRows.Close()
+
+    messageRows, err := dbconn.db.Query("DELETE FROM chatschema.messages")
+    if err != nil {
+        log.Println(err)
+    }
+    log.Println("Deleted all messages")
+    defer messageRows.Close()
 }
