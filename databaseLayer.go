@@ -3,6 +3,7 @@ package main
 import (
     "log"
     "database/sql"
+    "time"
 
     _ "github.com/lib/pq"
 )
@@ -14,6 +15,7 @@ type DBConn struct {
 type Message struct {
     senderid int
     messagebody string
+    created string
 }
 
 type Room struct {
@@ -27,7 +29,7 @@ type User struct {
 }
 
 func OpenDBConn() DBConn {
-    db, err := sql.Open("postgres", "dbname=chat user=DB_USER host=127.0.0.1 port=5432 sslmode=disable")
+    db, err := sql.Open("postgres", "dbname=chat user=chloekaliman host=127.0.0.1 port=5432 sslmode=disable")
     if err != nil {
         log.Printf("Unable to connect to database: %s", err)
     }
@@ -74,7 +76,7 @@ func (dbconn DBConn) SendMessage(messagebody string, roomid int, senderid int) {
 
 // return all messages in a room
 func (dbconn DBConn) GetMessages(roomid int) []Message {
-    rows, err := dbconn.db.Query("SELECT senderid, messagebody FROM chatschema.messages WHERE roomid = $1", roomid)
+    rows, err := dbconn.db.Query("SELECT senderid, messagebody, created FROM chatschema.messages WHERE roomid = $1", roomid)
     if err != nil {
         log.Println(err)
     }
@@ -84,10 +86,11 @@ func (dbconn DBConn) GetMessages(roomid int) []Message {
     for rows.Next() {
         var senderid int
         var messagebody string
-        if err := rows.Scan(&senderid, &messagebody); err != nil {
+        var created time.Time
+        if err := rows.Scan(&senderid, &messagebody, &created); err != nil {
             log.Println(err)
         }
-        Messages = append(Messages, Message{senderid, messagebody})
+        Messages = append(Messages, Message{senderid, messagebody, created.String()})
     }
     log.Println("Messages: ", Messages)
     if err := rows.Err(); err != nil {
