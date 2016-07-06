@@ -5,6 +5,7 @@ import (
     "database/sql"
     "time"
 
+
     _ "github.com/lib/pq"
 )
 
@@ -49,11 +50,18 @@ func (dbconn DBConn) CreateUser(username string) {
 
 // create room
 func (dbconn DBConn) CreateRoom(roomname string, userid int) {
-    _, err := dbconn.db.Exec("INSERT INTO chatschema.rooms (roomname) VALUES ($1)", roomname)
+    var roomid int
+    err := dbconn.db.QueryRow("INSERT INTO chatschema.rooms (roomname) VALUES ($1) RETURNING roomid", roomname).Scan(&roomid)
     if err != nil {
         log.Println(err)
     }
     log.Printf("User %d created room: %s", userid, roomname)
+    
+    _, err = dbconn.db.Exec("INSERT INTO chatschema.roommembers (roomid, userid) VALUES ($1, $2)", roomid, userid)
+    if err != nil {
+        log.Println(err)
+    }
+    log.Printf("User %d has joined room %d", userid, roomid)
 }
 
 // join room
