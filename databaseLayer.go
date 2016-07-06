@@ -21,6 +21,11 @@ type Room struct {
     roomname string
 }
 
+type User struct {
+    userid int
+    username string
+}
+
 func OpenDBConn() DBConn {
     db, err := sql.Open("postgres", "dbname=chat user=DB_USER host=127.0.0.1 port=5432 sslmode=disable")
     if err != nil {
@@ -92,21 +97,22 @@ func (dbconn DBConn) GetMessages(roomid int) []Message {
 }
 
 // return all users that have joined a room
-func (dbconn DBConn) GetUsers(roomid int) []int {
-    rows, err := dbconn.db.Query("SELECT userid FROM chatschema.roommembers WHERE roomid = $1", roomid)
+func (dbconn DBConn) GetUsers(roomid int) []User {
+    rows, err := dbconn.db.Query("SELECT rm.userid, u.username  FROM chatschema.roommembers rm JOIN chatschema.users u ON rm.userid = u.userid WHERE rm.roomid = $1", roomid)
     if err != nil {
         log.Println(err)
     }
     defer rows.Close()
-    var RoomUsers []int
+    var RoomUsers []User
     for rows.Next() {
         var userid int
-        if err := rows.Scan(&userid); err != nil {
+        var username string
+        if err := rows.Scan(&userid, &username); err != nil {
             log.Println(err)
         }
-        RoomUsers = append(RoomUsers, userid)
+        RoomUsers = append(RoomUsers, User{userid, username})
     }
-    log.Printf("Users in room %d: %d", roomid, RoomUsers)
+    log.Printf("Users in room %d: %v", roomid, RoomUsers)
     return RoomUsers
 }
 
