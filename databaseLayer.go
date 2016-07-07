@@ -6,7 +6,6 @@ import (
     "time"
     "fmt"
 
-
     _ "github.com/lib/pq"
 )
 
@@ -31,7 +30,7 @@ type User struct {
 }
 
 func OpenDBConn() DBConn {
-    db, err := sql.Open("postgres", "dbname=chat user=DB_USER host=127.0.0.1 port=5432 sslmode=disable")
+    db, err := sql.Open("postgres", "dbname=chat user=chloekaliman host=127.0.0.1 port=5432 sslmode=disable")
     if err != nil {
         log.Fatalf("Unable to connect to database: %s", err)
     }
@@ -61,12 +60,8 @@ func (dbconn DBConn) CreateRoom(roomname string, userid int) error {
     }
     log.Printf("User %d created room: %s", userid, roomname)
     
-    _, err = dbconn.db.Exec("INSERT INTO chatschema.roommembers (roomid, userid) VALUES ($1, $2)", roomid, userid)
-    if err != nil {
-        log.Println(err)
-        return err
-    }
-    log.Printf("User %d has joined room %d", userid, roomid)
+    dbconn.JoinRoom(roomid, userid)
+
     return nil
 }
 
