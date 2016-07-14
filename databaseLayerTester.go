@@ -6,12 +6,12 @@ import (
 
 func main() {
     fmt.Println("Testing database layer...")
-    OpenDBConn().CreateUser("testuser123")
-    OpenDBConn().CreateRoom("test room 123", 1)
-    OpenDBConn().JoinRoom(1, 1)
-    OpenDBConn().SendMessage("Hello, there!!! :)", 1, 1)
-    OpenDBConn().GetMessages(1)
-    OpenDBConn().GetUsers(1)
+    //OpenDBConn().CreateUser("testuser123")
+    OpenDBConn().CreateRoom("cheerios!", 8)
+    //OpenDBConn().JoinRoom(8, 8)
+    //OpenDBConn().SendMessage("Hello, there!!! :)", 8, 8)
+    OpenDBConn().GetMessages(8)
+    OpenDBConn().GetUsers(13)
     OpenDBConn().GetRooms()
-    OpenDBConn().clearAllRows()
+ //   OpenDBConn().clearAllRows()
 }
